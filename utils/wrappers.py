@@ -77,6 +77,43 @@ class TimeFeatureWrapper(gym.Wrapper):
         # Optionnaly: concatenate [time_feature, time_feature ** 2]
         return np.concatenate((obs, [time_feature]))
 
+class PositionFeatureWrapper(gym.Wrapper):
+    """
+    Add robot position to observation space.
+
+    :param env: (gym.Env)
+    """
+
+    def __init__(self, env, max_steps=1000, test_mode=False):
+        assert isinstance(env.observation_space, gym.spaces.Box)
+        # Add a time feature to the observation
+        low, high = env.observation_space.low, env.observation_space.high
+        low, high = np.concatenate((low, [float("-inf")]*3)), np.concatenate((high, [float("inf")]*3))
+        env.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
+
+        super(PositionFeatureWrapper, self).__init__(env)
+
+    def reset(self):
+        self._current_step = 0
+        return self._get_obs(self.env.reset())
+
+    def step(self, action):
+        self._current_step += 1
+        obs, reward, done, info = self.env.step(action)
+        return self._get_obs(obs), reward, done, info
+
+    def _get_obs(self, obs):
+        """
+        Concatenate the time feature to the current observation.
+
+        :param obs: (np.ndarray)
+        :return: (np.ndarray)
+        """
+
+        pos_feature=list(self.env.unwrapped.robot.body_xyz)
+
+        return np.concatenate((obs, pos_feature))
+
 
 class ActionNoiseWrapper(gym.Wrapper):
     """
